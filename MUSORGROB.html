@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UpgradeCoins — CS:GO Skin Upgrader</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --accent-green: #00ff88;
+            --accent-green-glow: rgba(0, 255, 136, 0.4);
+            --accent-purple: #a855f7;
+            --accent-purple-glow: rgba(168, 85, 247, 0.4);
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Bahnschrift', 'Arial Narrow', 'Trebuchet MS', sans-serif; user-select: none; }
+        body {
+            background-color: var(--bg-dark);
+            background-image: url('back.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: scroll;
+            background-repeat: no-repeat;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(7, 12, 20, 0.78);
+            z-index: -1;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: rgba(15, 23, 42, 0.8);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .logo {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 1.5rem; font-weight: 800; letter-spacing: 1px;
+            color: #f1f5f9; text-transform: uppercase;
+        }
+        .logo-icon { width: 32px; height: 32px; fill: #d7dee8; }
+        .header-controls { display: flex; align-items: center; gap: 1.5rem; }
+        .balance-container {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            display: flex; align-items: center; gap: 8px;
+            font-weight: 700; font-size: 1.1rem;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .balance-icon { font-size: 1.2rem; }
+        .btn-refill {
+            background: #d9dee5; color: #111827;
+            border: none; padding: 0.6rem 1.2rem;
+            border-radius: 12px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-refill:hover { filter: brightness(1.04); }
+        .main-container {
+            max-width: 1400px; margin: 2rem auto; padding: 0 1.5rem;
+            width: 100%; display: flex; flex-direction: column;
+            gap: 2rem; flex-grow: 1;
+        }
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px 1fr;
+            gap: 1.5rem; align-items: start;
+        }
+        @media (max-width: 1100px) {
+            .game-grid { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background: rgba(20, 27, 39, 0.94);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px; padding: 1.5rem;
+            display: flex; flex-direction: column; gap: 1rem;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.22);
+            height: 700px; min-height: 0;
+        }
+        .panel-title {
+            font-size: 1.1rem; font-weight: 700; color: #ffffff;
+            text-transform: uppercase; letter-spacing: 1px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.8rem; flex-shrink: 0;
+        }
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 6px;
+            overflow-y: auto; overflow-x: hidden;
+            padding: 2px 4px 8px 0;
+            flex: 1 1 auto; min-height: 0;
+            align-content: start;
+            scrollbar-width: thin;
+            scrollbar-color: #475569 transparent;
+        }
+        .items-grid::-webkit-scrollbar { width: 6px; }
+        .items-grid::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+        .items-grid::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .item-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 6px 4px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: space-between;
+            cursor: pointer; transition: all 0.2s;
+            position: relative; overflow: hidden;
+            min-height: 100px; min-width: 0;
+        }
+        .item-card::before {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 100%; height: 3px;
+            background: var(--rarity-color, #fff);
+        }
+        .item-card:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,0.2); }
+        .item-card.selected { border-color: #b8c2cf; background: rgba(0, 255, 136, 0.08); }
+        .item-card.selected-target { border-color: #c1cad6; background: rgba(168, 85, 247, 0.08); }
+        .item-img { width: 60px; height: 42px; object-fit: contain; margin: 2px 0; }
+        .item-name {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-align: center;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            margin-top: 3px;
+            line-height: 1.15;
+            max-width: 100%;
+        }
+                .item-price {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #ffd700;
+            margin-top: 3px;
+            line-height: 1.1;
+            letter-spacing: 0.3px;
+        }
+        .sell-btn {
+            background: rgba(239, 68, 68, 0.15); color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 4px; padding: 1px 6px;
+            font-size: 0.6rem; cursor: pointer; margin-top: 3px;
+            transition: 0.2s; font-weight: 700;
+        }
+        .sell-btn:hover { background: var(--accent-red); color: #fff; }
+        .buy-btn {
+            background: rgba(0, 255, 136, 0.12);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.35);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 0.6rem;
+            cursor: pointer;
+            margin-top: 3px;
+            transition: 0.2s;
+            font-weight: 700;
+        }
+        .buy-btn:hover { background: #00ff88; color: #111827; }
+        .buy-btn:disabled {
+            background: rgba(120, 120, 120, 0.15);
+            color: #6b7280;
+            border-color: rgba(120, 120, 120, 0.3);
+            cursor: not-allowed;
+        }
+
+        .game-grid > .panel:first-child,
+        .game-grid > .panel:last-child {
+            background-image: linear-gradient(rgba(30, 41, 59, 0.86), rgba(30, 41, 59, 0.92)), url('back2.png');
+            background-size: cover; background-position: center;
+        }
+
+        #inventorySection, #shopGrid {
+            min-height: 0; flex: 1 1 0;
+            overflow-y: auto; overflow-x: hidden;
+        }
+
+        .roulette-panel {
+            background: rgba(20, 27, 39, 0.94);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px; padding: 1.5rem;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: space-between;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.22);
+            height: 700px;
+        }
+        .roulette-wrapper {
+            position: relative; width: 280px; height: 280px;
+            display: flex; align-items: center; justify-content: center;
+            margin: auto 0;
+        }
+        .svg-wheel { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .wheel-bg-track { fill: none; stroke: rgba(15, 23, 42, 0.8); stroke-width: 18; }
+                        .wheel-progress {
+            fill: none;
+            stroke: url(#greenGradient);
+            stroke-width: 18;
+            stroke-dasharray: 753.98;
+            stroke-dashoffset: 753.98;
+            transition: stroke-dashoffset 0.3s ease;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 6px rgba(120, 160, 70, 0.5));
+        }
+        .needle-container {
+            position: absolute; width: 100%; height: 100%;
+            top: 0; left: 0; pointer-events: none;
+            transition: transform 3.5s cubic-bezier(0.15, 0.85, 0.15, 1);
+        }
+        .needle {
+            position: absolute; top: 10px; left: calc(50% - 8px);
+            width: 16px; height: 24px; fill: #e8edf3;
+        }
+        .wheel-center-info {
+            position: absolute; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+        }
+        .chance-text { font-size: 2.2rem; font-weight: 900; color: #f1f5f9; line-height: 1; }
+        .multiplier-text { font-size: 1.1rem; font-weight: 700; color: #b7c0cc; margin-top: 4px; }
+        .chance-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+        .btn-upgrade {
+            width: 100%; padding: 1rem; border: none;
+            border-radius: 14px; background: #d9dee5; color: #111827;
+            font-size: 1.2rem; font-weight: 900;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            cursor: pointer; transition: all 0.3s ease; flex-shrink: 0;
+        }
+        .btn-upgrade:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+        .selected-preview {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 100%; background: rgba(15, 23, 42, 0.6);
+            padding: 10px 14px; border-radius: 12px;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem; flex-shrink: 0;
+        }
+        .preview-box { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .preview-box strong {
+            max-width: 130px; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap; font-size: 0.8rem;
+        }
+
+        .history-section {
+            background: rgba(20, 27, 39, 0.94);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px; padding: 1.2rem;
+            display: flex; flex-direction: column; gap: 1rem;
+            background-image: linear-gradient(rgba(20, 27, 39, 0.88), rgba(20, 27, 39, 0.94)), url('back4.png');
+            background-size: cover; background-position: center;
+        }
+        .history-feed { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+        .history-card {
+            min-width: 200px; background: rgba(15, 23, 42, 0.7);
+            border-radius: 12px; padding: 10px 14px;
+            border-left: 4px solid var(--border-color);
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .history-card.win { border-left-color: var(--accent-green); }
+        .history-card.lose { border-left-color: var(--accent-red); }
+        .history-status { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; }
+        .history-status.win { color: var(--accent-green); }
+        .history-status.lose { color: var(--accent-red); }
+        .history-item-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-details { font-size: 0.75rem; color: var(--text-muted); }
+        .toast {
+            position: fixed; bottom: 30px; right: 30px;
+            padding: 16px 24px; border-radius: 12px;
+            background: var(--bg-card); color: #fff; font-weight: 700;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transform: translateY(100px); opacity: 0;
+            transition: all 0.3s ease; z-index: 1000;
+            max-width: 400px;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.win { border-color: var(--accent-green); }
+        .toast.lose { border-color: var(--accent-red); }
+
+        .shop-layout { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 12px; min-height: 0; flex: 1 1 0; overflow: hidden; }
+        .shop-sidebar { display:flex; flex-direction:column; gap:6px; min-height:0; overflow-y:auto; padding:5px; background: rgba(8,12,18,.35); border:1px solid rgba(255,255,255,.06); border-radius:12px; }
+        .category-btn { display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; padding:10px 10px; border:0; border-radius:8px; background:transparent; color:#9ba7b7; cursor:pointer; text-align:left; font-weight:600; flex:0 0 auto; }
+        .category-btn:hover { background:rgba(255,255,255,.045); color:#eef2f7; }
+        .category-btn.active { background:#2a3340; color:#fff; }
+        .category-btn b { min-width:22px; text-align:center; font-size:.72rem; color:#778394; font-weight:700; }
+        .shop-content { min-width:0; min-height:0; height:100%; display:flex; flex-direction:column; gap:8px; }
+        .shop-toolbar { display:flex; flex:0 0 auto; justify-content:space-between; align-items:center; color:#a9b3c1; font-size:.75rem; padding:0 2px; }
+        .shop-toolbar span:first-child { color:#e7ebf0; font-weight:700; }
+        .value-accent { color:#d8dee7 !important; }
+        @media (max-width: 1100px) {
+            .shop-layout { grid-template-columns: 1fr; }
+            .shop-sidebar { flex-direction:row; overflow-x:auto; }
+            .category-btn { min-width:105px; }
+            .panel, .roulette-panel { height: auto; min-height: 520px; }
+            .items-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+        }
+
+        .case-section {
+            max-width: 1352px;
+            width: calc(100% - 3rem);
+            margin: 0 auto 2.5rem;
+            background: rgba(20, 27, 39, 0.94);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 18px 20px 20px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.22);
+            overflow: hidden;
+            background-image: linear-gradient(rgba(20, 27, 39, 0.88), rgba(20, 27, 39, 0.94)), url('back3.png');
+            background-size: cover; background-position: center;
+        }
+        .case-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .case-tab {
+            flex: 1;
+            min-width: 140px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(15, 23, 42, 0.5);
+            cursor: pointer;
+            text-align: left;
+            color: #b7c0cc;
+            font-family: inherit;
+            transition: 0.15s;
+        }
+        .case-tab:hover { background: rgba(30, 41, 59, 0.7); }
+        .case-tab.active {
+            border-color: #b8c2cf;
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+        }
+        .case-tab .case-tab-name { font-weight: 800; font-size: 0.85rem; letter-spacing: 0.5px; display: block; }
+        .case-tab .case-tab-price { font-size: 0.72rem; color: #ffd700; font-weight: 700; margin-top: 3px; display: block; }
+        .case-tab .case-tab-sub { font-size: 0.68rem; color: #8892a0; margin-top: 2px; display: block; }
+        .case-tab.active .case-tab-sub { color: #b7c0cc; }
+
+        .case-header, .case-controls { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+        .case-title { font-size: 1rem; font-weight: 800; letter-spacing: 1.5px; color:#fff; }
+        .case-subtitle { margin-top:3px; font-size:.72rem; color:#aeb7c4; }
+        .case-status { font-size:.85rem; font-weight:800; color:#fff; }
+        .case-window {
+            position:relative; height:126px; margin:14px 0 16px; overflow:hidden;
+            border:1px solid rgba(255,255,255,.07); border-radius:14px;
+            background:rgba(7,12,18,.6);
+        }
+        .case-window::before, .case-window::after {
+            content:''; position:absolute; top:0; width:80px; height:100%; z-index:2; pointer-events:none;
+        }
+        .case-window::before { left:0; background:linear-gradient(90deg, rgba(7,12,18,.95), transparent); }
+        .case-window::after { right:0; background:linear-gradient(270deg, rgba(7,12,18,.95), transparent); }
+        .case-center-line {
+            position:absolute; z-index:3; top:0; bottom:0; left:50%; width:2px;
+            transform:translateX(-50%); background:#fff; opacity:.9;
+        }
+        .case-track {
+            height:100%; display:flex; align-items:center; gap:10px;
+            width:max-content; transform:translateX(0); will-change:transform;
+        }
+        .case-card {
+            flex:0 0 128px; width:128px; min-width:0; height:96px; overflow:hidden;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            padding:7px; border:1px solid rgba(255,255,255,.08); border-radius:10px;
+            background:rgba(20,27,39,.9);
+        }
+        .case-card img { width:92px; height:52px; object-fit:contain; }
+        .case-card span { width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; margin-top:3px; font-size:.62rem; color:#fff; }
+        .case-card b { font-size:.65rem; color:#d9dee7; margin-top:2px; }
+        .case-open-btn {
+            border:0; border-radius:10px; padding:10px 18px; background:#fff; color:#111827;
+            font-family:inherit; font-weight:800; cursor:pointer;
+        }
+        .case-open-btn:hover { background:#e5e7eb; }
+        .case-open-btn:disabled { background:#3a4350; color:#7d8794; cursor:not-allowed; }
+        .case-timer { font-size:.74rem; color:#b7c0cc; }
+
+        .currency-switcher {
+            display: flex; gap: 3px;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 4px; border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .cur-btn {
+            padding: 6px 10px; border: none; background: transparent;
+            color: var(--text-muted); border-radius: 6px; cursor: pointer;
+            font-weight: 700; font-size: 0.75rem; transition: 0.15s;
+        }
+        .cur-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .cur-btn.active { background: #2a3340; color: #fff; }
+        @media (max-width: 700px) { .currency-switcher { display: none; } }
+    </style>
+</head>
+<body>
+
+    
+
+    <audio id="soundUpgradeSpin" src="sound1.mp3" preload="auto" loop></audio>
+    <audio id="soundCaseSpin" src="sound2.mp3" preload="auto"></audio>
+    <audio id="soundWin" src="sound_win.mp3" preload="auto"></audio>
+    <audio id="soundLose" src="sound_lose.mp3" preload="auto"></audio>
+   
+
+    <header>
+        <div class="logo">
+            <svg class="logo-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+            Skin Upgrader
+        </div>
+        <div class="header-controls">
+            <div class="balance-container">
+                <span class="balance-icon"></span>
+                <span id="userBalance">$10.00</span>
+            </div>
+            <div class="currency-switcher">
+                <button class="cur-btn active" data-cur="USD" onclick="setCurrency('USD')">$ USD</button>
+                <button class="cur-btn" data-cur="UAH" onclick="setCurrency('UAH')">₴ UAH</button>
+                <button class="cur-btn" data-cur="RUB" onclick="setCurrency('RUB')">₽ RUB</button>
+            </div>
+            <button class="btn-refill" id="refillBtn"><span>+</span> $10</button>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <div class="game-grid">
+
+            <section class="panel">
+                <div class="panel-title">
+                    <span>1. Ваша ставка</span>
+                    <span id="betValueDisplay" style="color: var(--accent-green);">$0.00</span>
+                </div>
+                <div id="inventorySection" class="items-grid"></div>
+            </section>
+
+            <section class="roulette-panel">
+                <div class="panel-title" style="width: 100%;"><span>UPGRADE</span></div>
+                <div class="roulette-wrapper">
+                    <svg class="svg-wheel" viewBox="0 0 300 300">
+                        <defs>
+                                <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#32CD32" />
+                                <stop offset="100%" stop-color="#00FF00" />
+                            </linearGradient>
+                        </defs>
+                        <circle class="wheel-bg-track" cx="150" cy="150" r="120"></circle>
+                        <circle id="wheelProgress" class="wheel-progress" cx="150" cy="150" r="120"></circle>
+                    </svg>
+                    <div class="needle-container" id="needleContainer">
+                        <svg class="needle" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2z"></path></svg>
+                    </div>
+                    <div class="wheel-center-info">
+                        <div class="chance-text" id="chanceDisplay">0.00%</div>
+                        <div class="multiplier-text" id="multiplierDisplay">x0.00</div>
+                        <div class="chance-label">Шанс успеха</div>
+                    </div>
+                </div>
+                <div class="selected-preview">
+                    <div class="preview-box"><strong id="previewBetText">—</strong></div>
+                    <span style="color: var(--accent-purple); font-weight: bold;">➔</span>
+                    <div class="preview-box"><strong id="previewTargetText">—</strong></div>
+                </div>
+                <button class="btn-upgrade" id="upgradeBtn" disabled onclick="startUpgrade()">Upgrade</button>
+            </section>
+
+            <section class="panel shop-panel">
+                <div class="panel-title">
+                    <span>2. Выберите цель</span>
+                    <span id="targetValueDisplay" class="value-accent">$0.00</span>
+                </div>
+                <div class="shop-layout">
+                    <aside class="shop-sidebar" aria-label="Категории предметов">
+                        <button class="category-btn active" data-category="all" onclick="setShopCategory('all')"><span>Все</span><b id="count-all">0</b></button>
+                        <button class="category-btn" data-category="knives" onclick="setShopCategory('knives')"><span>Ножи</span><b id="count-knives">0</b></button>
+                        <button class="category-btn" data-category="rifles" onclick="setShopCategory('rifles')"><span>Винтовки</span><b id="count-rifles">0</b></button>
+                        <button class="category-btn" data-category="pistols" onclick="setShopCategory('pistols')"><span>Пистолеты</span><b id="count-pistols">0</b></button>
+                        <button class="category-btn" data-category="smgs" onclick="setShopCategory('smgs')"><span>ПП</span><b id="count-smgs">0</b></button>
+                        <button class="category-btn" data-category="shotguns" onclick="setShopCategory('shotguns')"><span>Дробовики</span><b id="count-shotguns">0</b></button>
+                        <button class="category-btn" data-category="gloves" onclick="setShopCategory('gloves')"><span>Перчатки</span><b id="count-gloves">0</b></button>
+                    </aside>
+                    <div class="shop-content">
+                        <div class="shop-toolbar">
+                            <span id="categoryTitle">Все предметы</span>
+                            <span id="catalogCount">0 предметов</span>
+                        </div>
+                        <div class="items-grid" id="shopGrid"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <section class="history-section">
+            <div class="panel-title" style="border: none; padding: 0;"><span>UPGRADE HISTORY</span></div>
+            <div class="history-feed" id="historyFeed"></div>
+        </section>
+    </main>
+
+    <section class="case-section" id="caseSection">
+        <div class="case-tabs" id="caseTabs"></div>
+        <div class="case-header">
+            <div>
+                <div class="case-title" id="caseTitle">MINI CASE</div>
+                <div class="case-subtitle" id="caseSubtitle">Дешёвые скины</div>
+            </div>
+            <div class="case-status" id="caseStatus">$2.50</div>
+        </div>
+        <div class="case-window">
+            <div class="case-center-line"></div>
+            <div class="case-track" id="caseTrack"></div>
+        </div>
+        <div class="case-controls">
+            <span class="case-timer" id="caseTimer">Бесплатно через 60 сек</span>
+            <button class="case-open-btn" id="caseOpenBtn" onclick="openCase()">Открыть за $2.50</button>
+        </div>
+    </section>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const SVG_WEAPON_FALLBACK = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60' fill='%23a855f7'>" +
+            "<path d='M10 30 L40 20 L80 20 L90 30 L70 35 L40 35 Z'/>" +
+            "</svg>"
+        );
+
+        const FREE_CASE_LIMIT = 2.5;
+
+        // ==================== СОСТОЯНИЕ ====================
+        let state = {
+            balance: 10,
+            currency: 'USD',
+            rates: { USD: 1, UAH: 41, RUB: 92 },
+            selectedInventoryItems: [],
+            selectedTargetItem: null,
+            inventory: [],
+            isSpinning: false,
+            currentRotation: 0,
+            shopCategory: 'all',
+            caseReadyAt: {},
+            caseOpening: false,
+            activeCaseId: 'mini'
+        };
+
+        const CASES = [
+            { id: 'mini',      title: 'MINI CASE',      subtitle: 'Дешёвые скины ($0.05–5)',    price: 2.50,   min: 0,    max: 5,     tier: 'common' },
+            { id: 'premium',   title: 'PREMIUM CASE',   subtitle: 'Средние скины ($5–50)',      price: 15.00,  min: 5,    max: 50,    tier: 'rare' },
+            { id: 'elite',     title: 'ELITE CASE',     subtitle: 'Дорогие скины ($50–300)',    price: 75.00,  min: 50,   max: 300,   tier: 'epic' },
+            { id: 'legendary', title: 'LEGENDARY CASE', subtitle: 'Ножи и топ ($300+)',         price: 300.00, min: 300,  max: 99999, tier: 'legendary' }
+        ];
+
+        CASES.forEach(c => { state.caseReadyAt[c.id] = Date.now() + 60000; });
+
+        // ==================== СКИНЫ ====================
+        const SHOP_ITEMS = [
+            { id: 'c-p250-dune', name: 'P250 | Sand Dune', price: 0.05, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLhzMOwwjFU0OGvZqBSLPmUBnPelesn5-RrSXDlwRhx5TjSwtmocCifPwQpDpshReBfsxPrk4DhNu3jshue1dy8VcXxuA' },
+            { id: 'c-p250-bone', name: 'P250 | Bone Mask', price: 0.08, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLhzMOwwjFL0OaveKFSLPmUBnPekL0l47g9TXuylE916mrRy9-vdS6VZgQpWJJ5F-8OsRawl4DhNbix4Rue1dyhzdnPWw' },
+            { id: 'c-glock-ground', name: 'Glock-18 | Groundwater', price: 0.06, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2kpnj9h1I4M2hZK17Jc-fB2CY1aBzseQ4GXG1lEwk4mWHmd39dC7BOwImD8F2QedeshjrkYKyML-z4Q3flcsbmqxtqryL' },
+            { id: 'c-glock-dune', name: 'Glock-18 | Sand Dune', price: 0.05, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2kpnj9h1I4M29aappH_KBD3Gf_uJ_t-l9AS_gwE4i4GTdyIn6IinEalUhC5t5FOMN5BK7xobiPung7wbWiolNzS_gznQeDKgSRyc' },
+            { id: 'c-glock-candy', name: 'Glock-18 | Candy Apple', price: 0.28, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2kpnj9h1I4M28baBSLPmUBnPelb93teA-FivjzB5wsjzTyI2pIn_CPAMoW8N3ROJZshm5w9zgNbnk5xue1dyMA9ZU_Q' },
+            { id: 'c-glock-weasel', name: 'Glock-18 | Weasel', price: 0.22, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2kpnj9h1Y-s2pZKtuK6HLMXCVwP1zvN5lRi67gVN_4j7Qzdj8dimQblQkX8YkTeNe5Bmxkd2zNr_j5QbdjthCzX-qjylI8G81tDMJpR5Y' },
+            { id: 'c-glock-ironwork', name: 'Glock-18 | Ironwork', price: 0.25, rarity: 'Mil-Spec', rarityColor: '#4b69ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2kpnj9h1a_s2pZKtuK8-XD3WbjOh3vO1WQyC0nQlp5jmEmNaodH6VbwMnApshEOcPskOww4e0N-qz5lPZ2YlGyCSviika6zErvbhhWFzqpw' },
+            { id: 'c-usp-forest', name: 'USP-S | Forest Leaves', price: 0.60, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkjYbf7itX6vytbbZSM-CsAmKR1-tlj-1gSCGn2xgh5W3Rwo2gcH6eP1IhWcYmTeYO4xTsw9TmY-mx5Q3a3ogQmSqsiCtXrnE8utrnVdI' },
+            { id: 'c-usp-blueprint', name: 'USP-S | Blueprint', price: 4.50, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkjYbf7itX6vytbbZSI-WsG3SA0tF0vPRsXzu6mwkYvzSCkpu3IiqTZgAmCJIlRLEP5BXpxtPlMOOxswPZithFyyj3iyNPvCo96r1QBb1lpPPa5SpubA' },
+            { id: 'c-usp-torque', name: 'USP-S | Torque', price: 3.80, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkjYbf7itX6vytbbZSI-WsG3SA_v5kv-Z7SjqgnAsYvzSCkpu3cH2eZgcgD5cmTOQK5BftlobvY-zk4gCN2I4UyX-s3XhI7S4_supXA71lpPNCDDeLhA' },
+            { id: 'c-usp-cortex', name: 'USP-S | Cortex', price: 5.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkjYbf7itX6vytbbZSI-WsG3SA_u1jpN5lRi67gVNz4G7Qm938cS_Da1AhXpB1EeVb4xm4mtDjN7vj4A3b2NpGyCr52i4Y8G81tMzdoYZ7' },
+            { id: 'c-five-forest', name: 'Five-SeveN | Forest Night', price: 0.07, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL3l4Dl7idN6vyRYL1SJv-BC3SE_uB_t-l9cCW6khUz_T7Untv9cXmfPAEnCZFwRLUJtEXtxN3iN-mz7gffjtkRnir-2nkauyx1o7FVpfrK-Xo' },
+            { id: 'c-five-orange', name: 'Five-SeveN | Orange Peel', price: 0.08, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL3l4Dl7idN6vyRe7RSNPGDC1if0-94t-RWQyC0nQlp6jjTytf7JH6XbQIiD5t2EOZYsBDtl4LjNe7k4QzYidlEzX34hn8Y7zErvbi46hZUEA' },
+            { id: 'c-five-candy', name: 'Five-SeveN | Candy Apple', price: 0.55, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL3l4Dl7idN6vyRe6tSMvWXMWuZxuZi_rAwG36xxUp-t2rVwt6vdCmSPAQnDpNxQOBY5BXsxoWzZuvg5Ffdid1bjXKptD9kyfI' },
+            { id: 'c-tec-ground', name: 'Tec-9 | Groundwater', price: 0.05, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLlm5W5wjFU0P2iYbJoH_yaCW-Ej7om4eQ6H3zrxEwk4T-HmN78dirCb1MmA8Z3Re8D5hS5x9KzYrvkslPAy9USDDHRuWI' },
+            { id: 'c-tec-tornado', name: 'Tec-9 | Tornado', price: 0.06, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLlm5W5wjFU0OaheqpsJP-sDHWR1-FJvOhuRz39w0Qh4WiHmd-uc36eZlcmX5p0E-IKuxLqkt3kYe_jsgDYg4NCziX82jQJsHiZ2a0fyg' },
+            { id: 'c-tec-isaac', name: 'Tec-9 | Isaac', price: 2.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLlm5W5wiFO0Oara_1SIeOaB2qf19F6ueZhW2frlEpz6zyAy477dXrEagFxDcclRO4C5EK8wIa1Nem3s1TdiotNzCn5kGoXuYgN6W8t' },
+            { id: 'c-tec-fuel', name: 'Tec-9 | Fuel Injector', price: 3.40, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLlm5W5wiVI0Oara_1SM-WDC3WTye9kt-RtcCW6khUz_Wvcy9qgdCnEPQ8hApBzRrQJ4RW7moDgMLzktFDZiI5HnyWr3ChN5yp1o7FVg4hNKG8' },
+            { id: 'c-dual-contractor', name: 'Dual Berettas | Contractor', price: 0.06, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL0kp_0-B1I4M2-ZadSLPmUBnPekb8g5LI8Hyi2l01z42Tdmdj9cXiRaA4jXJp4E7YJ4Ra8lILmP-7itBue1dzkV1WWjA' },
+            { id: 'c-dual-colony', name: 'Dual Berettas | Colony', price: 0.05, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL0kp_0-B1I4M29eKVuJc-eD3WZz-tJvOhuRz39wRx2smzVyIqtJ3OQaARzDschFO5esxm5mtHiM-7l5wCN3ohBxSz63zQJsHg_UethgQ' },
+            { id: 'c-dual-twin', name: 'Dual Berettas | Twin Turbo', price: 0.35, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL0kp_0-B1Y-s2qfaVhH_WfB3OV0tFkse1lVha_nBovp3OHytv8JCnBbAF1X5MjR7UPsBfrmoHuNr7nsgbfjdlAxSr63CIfuChr_a9cBiuNovOB' },
+            { id: 'c-dual-melondrama', name: 'Dual Berettas | Melondrama', price: 1.90, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL0kp_0-B1Y-s2rZK15JeOsDGKHwPxzj-1gSCGn20t_5TiBmdf9Jy-QaQIiW5F1E-BesxG9lIaxNuLj41He340Ryi79ii5XrnE8Xl7Qhlk' },
+            { id: 'c-cz-tigris', name: 'CZ75-Auto | Tigris', price: 0.40, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLyhMG1_B1Y-s2tP_FsbeSaCWKC_uJ_t-l9ASvil0R15WjUmYmqc33CaQ91W5QlRbVetETtwNC1P-u34g2L2dpEmS_gznQebcVQ6rs' },
+            { id: 'c-cz-victoria', name: 'CZ75-Auto | Victoria', price: 2.60, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLyhMG1_B1a_s2rfKdlJfSsDX3HlNF6ueZhW2fkk04i5WrXmY2sc3qfPFAlWZd3EOdY4Bi6loCxPu7h51fZjNlGzST5kGoXuTXAF0gA' },
+            { id: 'c-cz-xian', name: 'CZ75-Auto | Xiangliu', price: 3.10, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLyhMG1_B1c_M2tcpt-LvGYC3Sv0ftkoO1scCW6khUz_WTcw9r7JH7BOgApApojQuBb5kO5lNO1ZO_h4VaM2o5Gm36s3HgbvH51o7FVgkdxNDg' },
+            { id: 'c-r8-blaze', name: 'R8 Revolver | Blaze', price: 1.60, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLjm4Dv8TRe_c2vaZtrLPGeC3SvzedxuPUnTCznkR9xsGiHzomgIn-UPwN1DZZyELNe5xDrlNTgY-jm5FeM3tkUnDK-0H3jUXrCJQ' },
+            { id: 'c-r8-crimson', name: 'R8 Revolver | Crimson Web', price: 0.90, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLjm4Dv8TRe_c2mcZt6JfKAMWuZxuZi_rdrHny2wkR_sDuHw4muJXuWOwZyAsdzTeNcu0S4ktfkP77htAOPiYlbjXKp8jg9HbM' },
+            { id: 'c-p2000-amber', name: 'P2000 | Amber Fade', price: 1.80, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL5lYayrXIL0POvV6JsJPWsA2KEwOJ6ueJWQyC0nQlpsjvcmd_7dHyVZgdxAsB1QeRZ5BPqlYbmNuvr5lTW2o1Myyyt3ykY7DErvbib25P3aA' },
+            { id: 'c-p2000-pulse', name: 'P2000 | Pulse', price: 0.45, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL5lYayrXIL0PG7V7Q_cKDDMXeFzf1zj-1gSCGn201wsTnRm9egcS7DaABxDZckQe5Ys0S6xtKxZO-wsQDbi9lMxSv-jS5XrnE8fJdFk9o' },
+            { id: 'c-p2000-imperial', name: 'P2000 | Imperial', price: 1.10, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL5lYayrXIL0POjV7Q_cKDDMW6d0etkueBlcDu2kSIrujqNjsGrJH6XPQ9xAsZ5FLIDtBG5mtfhY7nl4gGNiosTzH792ntOvC1stbsDT-N7ra_mVv2F' },
+
+            { id: 's-mac-tornado', name: 'MAC-10 | Tornado', price: 0.05, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5WxrR1I4M26Z7ZjIfScMWuZxuZi_rg7H322kxgj62vQn9aheC7BblUgCZolReUNsBXukdLgP77r5A3fid1bjXKp3olIKis' },
+            { id: 's-mac-candy', name: 'MAC-10 | Candy Apple', price: 0.15, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5WxrR1I4M28baBSLPmUBnPemLZw4rk6Gi3gxkp_5W3Qmdv_cnrDPwZ1Asd2FOcM5BO4k4KxMe7h7xue1dzcbAPD_Q' },
+            { id: 's-mac-curse', name: 'MAC-10 | Curse', price: 3.50, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5WxrR1Y-s2jaac8cM-aHWifz-B3j-1gSCGn209w626GnNuucC2SaFMiC8B3FuUJ5kW7wdPnZe7g7gyP2Y4Ry3_5hnlXrnE8RS4Y9Xw' },
+            { id: 's-mac-rangeen', name: 'MAC-10 | Rangeen', price: 0.85, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5WxrR1Y-s2jaac8cM-SAmKbyfd3j-V8QBa_nBovp3PWztqtJXqWPVdzX8d3EbUDtkS_w9bmYui04gbYiolGnH_833xM6C5o_a9cBlensHEx' },
+            { id: 's-mac-graven', name: 'MAC-10 | Graven', price: 4.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5WxrR1a_s2rfKdlJfSsA2aTkL5JsvNoWSaMmRQguynLztytdHieOA92W8N5Re4D4ELtk9O2Nbnq5FfWjIkRn333hn9O731j4_FCD_RXlm8jng' },
+            { id: 's-mac-neon', name: 'MAC-10 | Neon Rider', price: 12.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5WxrR1Y-s2jaac8cM-dC2ie0-dytfNWQyC0nQlp5DzTntmgdC7COABxX5NxQrUOtUS5w4LgMu6zsVCK2IJCmyisjitM6DErvbicsEA0SQ' },
+            { id: 's-mp9-storm', name: 'MP9 | Storm', price: 0.06, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8js_f7i1k_OaheqlrMv-dGlicyOl-pK8_S3zjxRh_5mmGn9epIymQPQBxDpQlFuUJ5xa6kt2yZLjkswLY2ooT02yg2WH9Y1dp' },
+            { id: 's-mp9-music', name: 'MP9 | Music Box', price: 3.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8js_f_C9k4vu8aaNoH_afAXCV0_1JveR9TiW6liIrujqNjsGtcCmeOw8gAptyFLVb4BaxmtGyML_n5QXW2owUm3j5hi4dvHlr57sET-N7rSSys4ef' },
+            { id: 's-mp9-mount', name: 'MP9 | Mount Fuji', price: 2.40, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8js_f_CNk4uL3V6J4KvmsHm6eytF6ueZhW2fgkUoh5m7dnt78eC7FPFQgXJByE-AL5Bixld20MO2x51DX2o1NxCyokGoXudOiZ_SY' },
+            { id: 's-mp9-starlight', name: 'MP9 | Starlight Protector', price: 8.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8js_f-jFk4uL3V7d5IeKfB2CY1dF6ueZhW2flkUtztz_SzYypJSqRalUhDJNwQO4PsBXtx9HkN-K37w3bgohGmHn3kGoXuZ3lRdvF' },
+            { id: 's-bizon-candy', name: 'PP-Bizon | Candy Apple', price: 0.08, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLzl4zv8x1I4M28baBSLPmUBnPemO105rI6SirhzRwi6zjWzd2uJCmfaFByApMiRbNcuxC_k9TgZb_qthue1dzUHyay4A' },
+            { id: 's-bizon-high', name: 'PP-Bizon | High Roller', price: 2.50, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLzl4zv8x1Y-s2sYb5iLs-SAmuvyOBJvOhuRz39kEx1smnczomgJX2XbA4hC8BzRe9etxntldblMuyx5wfc2ooWni7_3DQJsHhZ08njvA' },
+            { id: 's-bizon-judgement', name: 'PP-Bizon | Judgement of Anubis', price: 6.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLzl4zv8x1Y-s2sYb5iLs-QG3WDxNF6ueZhW2fkzU0isDvTnomsdS7BbwF0A8ElROJfshC8wN3jYu-2tQ3c2osTxCitkGoXuVioOA3_' },
+            { id: 's-ump-indigo', name: 'UMP-45 | Indigo', price: 0.15, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkk4a0qB1I4M2nZqBkJ_-sD2mU_ulktfhWQyC0nQlp4WjTyN78In-Wb1QgDcNzRLUI5ka4wdfjPruxswbdgopGzHj73yNLvzErvbhz6ja6HQ' },
+            { id: 's-ump-osc', name: 'UMP-45 | Oscillator', price: 4.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkk4a0qB1a4s27ZbQ5dc-WAmKT1fx5p-B_Sha_nBovp3PTztuvd3jDOlMhX5IjR7YPtRTtx4XjNum2tQOLjItHmyj5j34b6Spt_a9cBq1OnGjK' },
+            { id: 's-ump-blaze', name: 'UMP-45 | Blaze', price: 3.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkk4a0qB1a7s2oZKVgJeOsAm6Xyfo4srhvSi21wUoi4j_Xzt7_di6RaQ4mA5YhRuIMtEbswIDmMbzg5ACN35UFk3uW8e_n9A' },
+            { id: 's-ump-primal', name: 'UMP-45 | Primal Saber', price: 2.10, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkk4a0qB1Y-s27ZbQ5dc-DHG6dwOJlseNsXRa_nBovp3PRn478JHmePQ8hDcF2Q7YDtxXrk92zYbyw7gXYjIhEyCn_3Hsbui44_a9cBklqRdMs' },
+            { id: 's-p90-asiimov', name: 'P90 | Asiimov', price: 4.80, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLhx8bf_jdk_6v-JaV-KfmeAXGvzedxuPUnTSjikRgksjuBzoz4dXLFb1QoC8QlTLQD4EPqk4LvN-Pns1aMioNBzTK-0H3gQVv65g' },
+            { id: 's-p90-emerald', name: 'P90 | Emerald Dragon', price: 18.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLhx8bf_jdk6-Cvb6tjH-DKXliS0-9gv95lRi67gVMm4m3Vzdmqci-SO1clX8Z1QeYO5xi5mtTuPu7l4FDc2o4TmH32jC1P8G81tLxM49od' },
+            { id: 's-p90-trigon', name: 'P90 | Trigon', price: 1.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLhx8bf_jdk_6v-V7B_KfecAFicyOl-pK9vGi3nlEt24GnSwoypc3rFbQ52XsN0EOFcshfuwYa1NbzktVTZ3ohN02yg2RSFidN_' },
+            { id: 's-p90-shallow', name: 'P90 | Shallow Grave', price: 6.20, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLhx8bf-jFk_6v-V7dlIfyfAXCvxvx3puRWQyC0nQlpsWzUyIqvcCiVPFQnW8YmEO4P5xi6xNS2Num35FbX34lCzX7_hytK5zErvbi02RizsA' },
+            { id: 's-mp7-fade', name: 'MP7 | Fade', price: 14.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8jsHf_CNk6fOqbZtgMKesAm6Xyfo45LQ7Fy3rzR536j6HyYn6J3zFaAcjA5RwQ-9fs0O5m93nMe2x5QHfjZUFk3sMNd5yQw' },
+            { id: 's-mp7-armor', name: 'MP7 | Armor Core', price: 0.55, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8jsHf_DNk4uL5V7FhNOKSA2iUxPx4j-1gSCGn2xhw6zjSzYysICiUOgV0Cpd1TORe5BW9w922Nrux5gKLitpGz3irhnlXrnE866qixJk' },
+            { id: 's-mp7-blood', name: 'MP7 | Bloodsport', price: 3.60, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8jsHf-jFk4uL5V6ZhL_-XHXef0_pJvOhuRz39lxsk4W3Ry96pIHrFOgElDZN2Q-9etUSwk4LnYu3h5wLejYwWxSr43zQJsHiIGMoJQA' },
+
+            { id: 'g-nova-predator', name: 'Nova | Predator', price: 0.12, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL_kYDhwjFL0OirarZsI_GeMWuZxuZi_rE8Fy2xx0h25z-Eyt77eSnEbw8mXJEmQeMP5EXrx4ezN7jgtAKNjIlbjXKpxHjTAt0' },
+            { id: 'g-nova-dune', name: 'Nova | Sand Dune', price: 0.06, rarity: 'Consumer', rarityColor: '#b0c3d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL_kYDhwjFU0OGvZqBSLPmUBnPek75ysrZoHnnkw0V0tjndwo6tcnqSawEoWMQkR-Rf5hLul9S1M-vkthue1dyxC6rLqQ' },
+            { id: 'g-nova-toy', name: 'Nova | Toy Soldier', price: 5.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL_kYDhwiFO0PyhfqVSNP-KMXSfzep_tfNWQyC0nQlp42zVytutcCmTZgchW5omTbNc5ka8l9XvM77jtACL34lBm3__iShI6TErvbjr52W2-A' },
+            { id: 'g-nova-hyper', name: 'Nova | Hyper Beast', price: 7.50, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL_kYDhwiFO0PyhfqVSKOmDC3WSxO9lpN5lRi67gVMhsGrTmd2seH6XbA4pDZR1EbMCtES8m4fiNenl4FDcid1Az32ri3tM8G81tMCTwFwB' },
+            { id: 'g-nova-koi', name: 'Nova | Koi', price: 2.80, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL_kYDhwiFO0PyhfqVSK_-aMWuZxuZi_rBqGCu3xEoksm_SzomhcHiQP1QjD8BxQuAN50TtlIK1Yri05lDeiY5bjXKpu6W3YF0' },
+            { id: 'g-xm-blue', name: 'XM1014 | Blue Steel', price: 0.25, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLpk8ewrHZk7uORaqh4JfSsAm6Xyfo4s7NrFnmylk114jiBnNn7cC7GaFcgC5pxEbZe5kTslYG0N7625laN2JUFk3tWvCSOkg' },
+            { id: 'g-xm-tranq', name: 'XM1014 | Tranquility', price: 1.10, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLpk8ewrHZk7OeRcKk8cKHHMWSR0-disfJWQyC0nQlp5zjWnNigIC-falMlWMN2F-cP5Ba-xoXlMri0swTZg41EyX34jS1LuDErvbgNI5zBZg' },
+            { id: 'g-xm-zombie', name: 'XM1014 | Zombie Offensive', price: 4.50, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLpk8ewrHZk7v-RcKlSOv-eDG6V_uFwtuRnXCClkCIrujqNjsGqdnzEOFUjW5omROQNt0LuwNKyYeKwslfYiN0Qmyr83Hsd6iZj5esAT-N7rRccpDyZ' },
+            { id: 'g-xm-entombed', name: 'XM1014 | Entombed', price: 2.90, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLpk8ewrHZk7OeRcKk8cKHHMWad1OJzpN5rQzy2qhEutDWR1N-hI3yWbVRyD8YiEOVZ50TqmoKyZb7rtVfWgosQzX7-3X9K5yc4tr4cEf1yVvkijss' },
+            { id: 'g-saw-sage', name: 'Sawed-Off | Sage Spray', price: 0.10, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLin4Hl-S1d6c29eJt-MOKSF1iUxP1zovVWXCi0kCIrujqNjsH9eC_GblMpCMB4RLYJuhi8wdLiN7_qslaNjdkWyCmqjn9O5yk5sbwBT-N7rdc-87w7' },
+            { id: 'g-saw-kraken', name: 'Sawed-Off | The Kraken', price: 4.60, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLin4Hl-S1d6c2tfZt-IeeWCmiWx9F5s_VmXzy-hSIrujqNjsH_eXmWaVRyXpF3EOZe5Bm8w93gMbzn4waPg98Tzir8jHwbuC5p4uZUT-N7rZ8ILI16' },
+            { id: 'g-saw-devourer', name: 'Sawed-Off | Devourer', price: 3.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLin4Hl-S1d6c2tfZt-IeeWCmiWx9FytfdmWju2hyIrujqNjsH8JSnBPQdxDcEiF-FZshS7kdG1NOyz4wKKiYNDmXn3jHkd5n055ulTT-N7rdPAUyyq' },
+            { id: 'g-saw-serpent', name: 'Sawed-Off | Serenity', price: 6.50, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLin4Hl-S1d6c2tfZt-IeeWCmiWx9FytfdocCW6khUz_W2Dwtv6cXLFZgUnD5VzQrMPtxjrx9K0Ye637wzYj4gXzimqiH9KuC91o7FV9mPR2UI' },
+            { id: 'g-mag-storm', name: 'MAG-7 | Storm', price: 0.08, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5G3wjFU0OG6Z7ZgJuKcAHOvzedxuPUnS3_iwk926m6EnIyvIn3DbQF0X5UjRbJfthewktK2MLzq4ATcgoJCxTK-0H2wBd1PlQ' },
+            { id: 'g-mag-swag', name: 'MAG-7 | SWAG-7', price: 0.90, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5G3wiNK0P-vb_NSM-eSCTCvzedxuPUnHirhkxhxtzvRzI38dnLEOlQnW5N1F-FZtRG6kYLvPu205ADaj40RnDK-0H0F4y2tgg' },
+            { id: 'g-mag-justice', name: 'MAG-7 | Justice', price: 2.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5G3wiVI0P-vb_NSKuWAGm6TxNF6ueZhW2fikUt36znWyNz_dn2ROgMhD5EiR7EO5BKxl4DlMLyx7gyNi4hAniz5kGoXuQ9OXJLa' },
+
+            { id: 'r-galil-tornado', name: 'Galil AR | Tornado', price: 0.20, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2n5rp8SNJ0OGhV7BiMv6SCmivzedxuPUnGHGywEtysm7Xy9qudXqWbwZ1XsRxQeIDs0W7mtbkM-ux4VCL3oxCmDK-0H3kO6HdPw' },
+            { id: 'r-galil-chat', name: 'Galil AR | Chatterbox', price: 28.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2n5rp8SNJ0PG7V6NsLPmfMWaS0-9lue5ncCS2kRQyvnPXnIn7eSrEZ1AnD5NxTeII4ESwxN3jN7zl5QHXjdhAnyuo2y9Nv3xs_a9cBuAhdjfO' },
+            { id: 'r-galil-cerberus', name: 'Galil AR | Cerberus', price: 1.30, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2n5rp8SNJ0PG7V6doMvKBG3Svxu96ue1WQyC0nQlpsTjVzdb8IH-UOw8lX8B5EeYJ40a8k4XnPuvqsgzYjt0QnCyqh3wb7DErvbjusqqqdw' },
+            { id: 'r-galil-sugar', name: 'Galil AR | Sugar Rush', price: 3.80, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2n5rp8SNJ0PG7V6NsLPmfMWSRz-pvs-loQDqMmRQguynLyNqpJX_CPwUpXpEmEOMLs0K-kdPiN-uz4wfW2IgWyySr2ixKvCht4fFCD_QYspg1jQ' },
+            { id: 'r-famas-colony', name: 'FAMAS | Colony', price: 0.20, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL3n5vh7h1I4M29eKVuJc-eD3WZz-tJvOhuRz39xExw5GXTw4qod3uUaQ91ApZ3QbMItxDrxtK2ZbuxtAaLg4hDxS76hjQJsHgze9LmZw' },
+            { id: 'r-famas-after', name: 'FAMAS | Afterimage', price: 6.50, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL3n5vh7h1Y-s2seqtmJf6sHmaEydFwsexoXBa_nBovp3PQn46ucH_COwcoCMchTe4CshG7loG2NrmztFTajoIXyiitiCpLvSk6_a9cBkMHi1qM' },
+            { id: 'r-famas-commem', name: 'FAMAS | Commemoration', price: 8.50, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL3n5vh7h1c_M2oaalsM8-fC2CRwvdJt-5lSxa_nBovp3PUztn4d3qSPQ8kDMR5ROVb4xCxw9a0NLni4lCIio4QzXn32yMb6Sds_a9cBr1TwPEt' },
+            { id: 'r-famas-mecha', name: 'FAMAS | Mecha Industries', price: 4.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL3n5vh7h1c_M2oaalsM8-eC2SYwNF6ueZhW2ewwx4hsm3dz46heSjCPVUjC8chEOYMtxOwkNHiYb63swXY3Y9Nn32skGoXuc3DGOrc' },
+            { id: 'r-sg-tornado', name: 'SG 553 | Tornado', price: 0.20, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLimcO1qx1I4M26Z7ZjIfScMWuZxuZi_uU7Syuxlx505muBzN2sI3uUOA51C5AhR7UIsEKww9W0MO634APd2NhbjXKp4EWrMzw' },
+            { id: 'r-sg-cyrex', name: 'SG 553 | Cyrex', price: 10.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLimcO1qx1Y-s29b_E4c8-QF3WV2dF6ueZhW2frlhl14W7Xzt6geXqQP1N0CMRyQuFY5kHsx9HmZejq7wPei91AzCT_kGoXueC0Dzdv' },
+            { id: 'r-sg-pulse', name: 'SG 553 | Pulse', price: 1.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLimcO1qx1Y-s29b_E4c8-DG2uDxNF6ueZhW2eykUh24jjczYqscH7GblIpCJBxF-AD4BHtxIKzM-nq5ACK3t1GyySskGoXuRyAaawM' },
+            { id: 'r-sg-atlas', name: 'SG 553 | Atlas', price: 0.80, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLimcO1qx1Y-s29b_E4c8-SGmuR0tF6ueZhW2fgkxt_tTndn46rJX6QOAEoC5QhEe5f5hHqltfgMeO0tQHY2IsTyyyokGoXuYh0VG-5' },
+            { id: 'r-aug-death', name: 'AUG | Death by Puppy', price: 14.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwi5Hf_C9k7uepV6BoIeSbMWWJ_up5t-ZwcCW6khUz_W7RnNegdyqRPAcpDZdwQOAO5xW4w4C0ZemwtgHYjoNHniX6iSsd7Cx1o7FVmQFtzuc' },
+            { id: 'r-aug-ricochet', name: 'AUG | Ricochet', price: 1.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwi5Hf_C9k7uepV654LfKfC1icyOl-pK9tHi-wxUp0sTyGw4z8dXqfb1IlWcd1QedctUbpwNHgPrnjtFeLj4tD02yg2euRXb9L' },
+            { id: 'r-aug-trigger', name: 'AUG | Trigger Discipline', price: 3.50, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwi5Hf_Ddc0Oa8YaNqJeKsCm6DwudmvOhnShalkBEkvAKJk4jxNWXEbwMhDpMkELUP4BSxxt2zYeuw71ff3d9AxHn5hyxL7nlrsr4HU6pz5OSJ2GiAbBJR' },
+            { id: 'r-ssg-blue', name: 'SSG 08 | Blue Spruce', price: 0.25, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLijZGwpR1I4M2jZ7d-H_yaCW-Ej7sl6OVsHXHizUQksGyDyNn7dH-WZgEgXJshFOdZskO6xoC1Y-LjtVDAy9US2YFh0PQ' },
+            { id: 'r-ssg-dragon', name: 'SSG 08 | Dragonfire', price: 42.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLijZGwpR1Y-s29e6M9eM-XHGaXzuBwufNscDqwmg0ijDGMnYftbyrFPVAoWcQjELQOuxO4k4e1N-nnsQfW2I5Mz3ivi3wb7Stj5ukAUKY7uvqAqS55_Pw' },
+            { id: 'r-ssg-blood', name: 'SSG 08 | Blood in the Water', price: 30.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLijZGwpR1Y-s29YKV_K8-fB2CY1aAmsbFtFnDilkUl5j7UzoqsInmVaFd0XMMlELYDshbuxNPvP-yxtlCMlcsbmlWiixNl' },
+            { id: 'r-ssg-abyss', name: 'SSG 08 | Abyss', price: 1.10, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLijZGwpR1a_s2ibbJkIeSbD2mvzedxuPUnH3_jzE1y4TvQyIr9JyieZlckCsRxF-8K50bsxN3gZOzktAzc2IJEzDK-0H1XlSI8xg' },
+            { id: 'r-ssg-necro', name: 'SSG 08 | Necropos', price: 3.60, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLijZGwpR1Y-s29e6M9eM-dC2SCzv55o95lRi67gVN26m_VnomsdiqTZwB0W5R5E7UCuxe6lICyMO3i7lDWjt4XyHj_iypB8G81tA-y21Aw' },
+            { id: 'r-scar-carbon', name: 'SCAR-20 | Carbon Fiber', price: 0.35, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLinZfyr3Jk7v-Ra6V_Iv-dMWGZw-tkj-1gSCGn20xx4mXRyd79eHPBbgQiXJpyQrMLuhfqm4LkNu7htQWI2d9CzSX9jShXrnE8-xTDFeg' },
+            { id: 'r-scar-blood', name: 'SCAR-20 | Bloodsport', price: 6.80, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLinZfyr3Jk6OGRe6dsMqLDMWWczuFyo_FmXT2MmRQguynLnoqrcHPCaFdzDMF5F-8P4Bbum9fkYuvrsVffjI5AyS75inlL5ixjsvFCD_R20nqesQ' },
+            { id: 'r-m249-magma', name: 'M249 | Magma', price: 0.60, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8zMK5wiNK0P2se61pKfGdMWuZxuZi_rNrTC-wl0gh5WXXmIqpIyiSbVIoXJckEO9eukTrx4XkMbjh51bYjIJbjXKp9iAER2c' },
+            { id: 'r-negev-mjolnir', name: 'Negev | Mjölnir', price: 24.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL_m5Hl6x1c_M2gbaNoNs-HBmiC_uJ_t-l9AXDhxRsi62yEmYqrdSmSbQMhWcN3EO8KshHpw4LmP-Oz51bcjNgXn3ngznQe6IKqifc' },
+
+            { id: 'r-ak-redline', name: 'AK-47 | Redline', price: 42.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlPPNSI_-RHGavzedxuPUnFniykEtzsWWBzoyuIiifaAchDZUjTOZe4RC_w4buM-6z7wzbgokUyzK-0H08hRGDMA' },
+            { id: 'r-ak-blue-lam', name: 'AK-47 | Blue Laminate', price: 6.50, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wipC0POlPPNhIf2sDGuFxNF6ueZhW2fhzE5_5G7dnt_7JXufa1J0DZAkE-cKtBaxl9WzPuyz5lDY3YpAzCn9kGoXuZPu7T4u' },
+            { id: 'r-ak-black-lam', name: 'AK-47 | Black Laminate', price: 12.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wipC0POlPPNhIf2sDHCvzedxuPUnGnzjlh51sTyAzomrICnEbQByWcciTOQIsBG_m9LiZOLh7wfdi91DnzK-0H1Z7oynag' },
+            { id: 'r-ak-safari', name: 'AK-47 | Safari Mesh', price: 1.20, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wjFL0P-re6xSNPGdMWuZxuZi_rIxSirkkElyt2qEzI2heXiTaVIiX5siROQJtxnul4XnYbvgswOMgolbjXKpnRk9Yjk' },
+            { id: 'r-ak-predator', name: 'AK-47 | Predator', price: 2.40, rarity: 'Industrial', rarityColor: '#5e98d9', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wjFL0OirarZsI_GeMWuZxuZi_uMwF3i3xkh25W_VzNevICqTP1QoXpJ2E-MM40bpldXvY7yw4wXb3olbjXKpy8jW9Xo' },
+            { id: 'r-ak-elite', name: 'AK-47 | Elite Build', price: 3.20, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlPPNSLfGAGmKC2NF6ueZhW2e2wh9y5GjTztirdSqfP1dyCpclR7FZ5xe9wNbhZei25FGPjokXxC2vkGoXuQLr5jvs' },
+            { id: 'r-ak-neon-rider', name: 'AK-47 | Neon Rider', price: 38.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlV6poL_6sHG6UxPxJvOhuRz39xkQhsTnVzoygdy7Ea1UoCZQkRe9bs0brl9TvN-m0tVHYjY5CyS35jjQJsHhk4o5zcA' },
+            { id: 'r-ak-asiimov', name: 'AK-47 | Asiimov', price: 85.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlPPNSIeOaB2qf19F6ueZhW2e2wEt-t2jcytf6dymSO1JxA5oiRecLsRa5kIfkYr-241aLgotHz3-rkGoXuUp8oX57' },
+            { id: 'r-ak-blood', name: 'AK-47 | Bloodsport', price: 65.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiVI0POlPPNSIvycAWOD0eFkpN5lRi67gVN15mmDw9egci_EPFAkDMQlTeZe4EXplNa0Yrvr5wbd345GyHioiC4b8G81tFuqg_k_' },
+            { id: 'r-ak-vulcan', name: 'AK-47 | Vulcan', price: 140.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlPPNSMuWRDGKC_uJ_t-l9AXCxxEh14zjTztivci2ePQZ2W8NzTecD4BKwloLiYeqxtAOIj9gUyyngznQeF7I6QE8' },
+            { id: 'r-ak-headshot', name: 'AK-47 | Head Shot', price: 22.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlV6xoIfSsHW-f1dF-v-1mcCW6khUz_TzRnNigd3-SOg4lAsF1QOQN4xS4wdHnMu-0swaMjIxExSSoiyof6ih1o7FVGHIdVhw' },
+            { id: 'r-m4-asiimov', name: 'M4A4 | Asiimov', price: 55.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiFO0P_6V6V-Kf2cGFidxOp_pewnTii3w0x_tmTRnt2qdHyWaFAjA5UlQOYI5BO5k9bhZunm41OI34NDnjK-0H3pAWw_Rw' },
+            { id: 'r-m4-desolate', name: 'M4A4 | Desolate Space', price: 22.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiFO0P_6afBSJPWAAWuR1etJo_FoTCyMmRQguynLnNepJXPEaQJyDZJ0QOdbsxi7ktS0Y-Li4ADegthGn32ojCJJ7CxosfFCD_SyjfEkHg' },
+            { id: 'r-m4-evil', name: 'M4A4 | Evil Daimyo', price: 3.50, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiFO0P_6afBSJeaaAliUwOd7qe5WQyC0nQlp4GqGz42ucCqXaQMhDpd4R-AIsxK6ktXgZePltVPXitoRn3-tjCgd6zErvbijVJZd2Q' },
+            { id: 'r-m4-griffin', name: 'M4A4 | Griffin', price: 2.80, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiFO0P_6afBSJ-KaCGGZz9F6ueZhW2e2zERysm3Umdesd3rGald1DpRyQLVbtUa5mtPvYuzrtATeg95EmS2vkGoXuZ5UWeP5' },
+            { id: 'r-m4-royal', name: 'M4A4 | Royal Paladin', price: 30.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiVI0P_6afBSMv-KD2uv0v9jufNscCW6khUz_W-Az9b8d3LFZ1AnDMAjR-4CsBO9xofhNL_q4wLWjogUzyn43SxM73x1o7FVNN3FvCs' },
+            { id: 'r-m4-emperor', name: 'M4A4 | The Emperor', price: 95.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiVI0P_6afBSJf2DC3Wf09F6ueZhW2exwBh_6m3dnt36InjDPQ4oXJt1TbJeshW_mtfjN-vrsgaKiokWy333kGoXuRj4z9Nd' },
+            { id: 'r-m4-neo', name: 'M4A4 | Neo-Noir', price: 18.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiFO0P_6afBSLvWcMWmfyPxJvOhuRz39wE1142vSztmvInvBOgV0W5R1FLYNuxW4wIbgNrmx4g2Kj4tMmCX93zQJsHgJr0dqFw' },
+            { id: 'r-m4-cyber', name: 'M4A4 | Cyber Security', price: 12.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiFO0P_6afBSI-mRC3WA1OB9j-1gSCGn2x9-527Tyt-pcnyUagQlW5JxEOIOuhjrw9XlMrixtQTd2NhNmH_5jCNXrnE8Cu1wa6c' },
+            { id: 'r-m4-dragon-king', name: 'M4A4 | 龍王 (Dragon King)', price: 15.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiFO0P_6afBSIf6QC3SE0-96j-1gSCGn20x062mAwtb8cX3CaAMoApV3EeFZ50Wwk9fuM-vqtAHW3opHn3iqiSxXrnE8PytIGFg' },
+            { id: 'r-m4a1-print', name: 'M4A1-S | Printstream', price: 175.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_OGMWrEwL9lj_F7Rienhgk1tjyIpYPwJiPTcAAoCpsiEO5ZsUbpm9C2Zuni4VHW3o5EzSX62HxP7Sg96-hWVqYi_6TJz1aW0nxrkGs' },
+            { id: 'r-m4a1-cyrex', name: 'M4A1-S | Cyrex', price: 22.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_OGMWrEwL9lj-JwXSyrqhEutDWR1N77cimSbQQgC8F5QLYCsELpltTnZuvk7wbcjdhDzy_43yMb6ilvt7kcEf1yDWu2yf8' },
+            { id: 'r-m4a1-guardian', name: 'M4A1-S | Guardian', price: 35.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_OGMWrEwL87o95sQyy0lBMzjDGMnYftb3-QPFUlWZJ1F7VbsBi7xoa0Y7vl5ACP2ohEzX-t2iJA7Xtv4ugKWaQ7uvqAAzqYQbE' },
+            { id: 'r-m4a1-mecha', name: 'M4A1-S | Mecha Industries', price: 28.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_eAMWrEwL9JveRqRyiMnBMjpi6RiIb8MhTLN1F4TowiE7EMtRW7ltzlMbvi5wPej4pDmCT2i3tKuHo4sOoEWKFz8qPS3F7BL_Rjtn0I4s52' },
+            { id: 'r-m4a1-hyper', name: 'M4A1-S | Hyper Beast', price: 60.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_OGMWrEwL9JuPh5SjuMlxgmoCm6lob-KT-JbwF1WZEjR-YJskK9k9XiYePltAeNjYlAxSn5j34dvCZstb4LB6Ut-7qX0V8Xkv5_2A' },
+            { id: 'r-m4a1-golden', name: 'M4A1-S | Golden Coil', price: 22.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_eAMWrEwL9lj_JnTiK2lxQztgKClYP9HifOOV5kFJclQ-Jb5xW-m9CxPuLq4QTfjd0XzyX6jCpL6X5o5OgDVfYn_a2Ci1rfcepqgV49FrE' },
+            { id: 'r-m4a1-nightmare', name: 'M4A1-S | Nightmare', price: 18.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_OGMWrEwL9lj-9gSCGnmBw1tgKJk4jxNWXCbAUpXpp0FrYPthC7k4fnZOm04laMjYxHn3r52HxJ6i065e0FVKV05OSJ2IHiKyzQ' },
+            { id: 'r-m4a1-player2', name: 'M4A1-S | Player Two', price: 48.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_OGMWrEwL9lj-J6SCbhxUl_jDGMnYftby7BbVdyCsB0EeZY4RPukNfhZOO2sQ3W398Qy3_6jHxIunptsO9TUqs7uvqAAWrfZoM' },
+            { id: 'r-awp-asiimov', name: 'AWP | Asiimov', price: 120.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V6V-Kf2cGFidxOp_pewnF3nhxEt0sGnSzN76dH3GOg9xC8FyEORftRe-x9PuYurq71bW3d8UnjK-0H0YSTpMGQ' },
+            { id: 'r-awp-neo', name: 'AWP | Neo-Noir', price: 75.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V6poL_6cB3WvzedxuPUnHirrxR4l423SyI39I3KXPwdxWZclQeNZ5EXskYfnNeyw71OMi9lNzDK-0H3r66pOTw' },
+            { id: 'r-awp-manowar', name: "AWP | Man-o'-war", price: 60.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_C9k7uW-V6NhL-KKMWuZxuZi_uM5HXG3xhh_t2iBnI2ucn3EZwEjDpJ0Q-dY5EPrxNTiYevj7gXa2IhbjXKpQIFOiXU' },
+            { id: 'r-awp-graphite', name: 'AWP | Graphite', price: 90.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_C9k7OC7ZbRhJc-RHGaGztF6ueZhW2e2k0l2sW_WzN7_cS6SbgV1CsF3TOEI4EOwloGzNLzg5g3fiIpHxC78kGoXuTqeOjwH' },
+            { id: 'r-awp-lightning', name: 'AWP | Lightning Strike', price: 110.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_C9k4_upYLBjKf6UMWaH0dF6ueZhW2frwU1_sW2EmNyvc32RZwMpCpcjQ-EJ4xbtmt3gYezk4wzb3tpAy3mrkGoXubsGIfVN' },
+            { id: 'r-awp-worm', name: 'AWP | Worm God', price: 12.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_DNk7uW-V7B6Kf6WMWuZxuZi_uRoGH3iw0wh4j7cnt6ucSqSZwUkCMB5TLIPsES_kNbuYeOwtgXai4NbjXKpZ4kj0o0' },
+            { id: 'r-awp-blackbox', name: 'AWP | Black Box', price: 22.00, rarity: 'Classified', rarityColor: '#d32ce6', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_DVL0PCiaadmH_KcFlicyOl-pK9tSXjikEgk6z-Ey9j9JXLDbFMhD8N4ELQJ5BLrk93hM-6ztg3WiI5E02yg2W_lAA_2' },
+            { id: 'r-awp-elite', name: 'AWP | Elite Build', price: 15.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V6lsM-SWHH6vzedxuPUnSnHmk0Qh4G6HmN-scXmSaQRxXJpwRuZYsxTqxtTnM7nl4gTW2dlFyjK-0H0d8XeEBg' },
+            { id: 'r-awp-fever', name: 'AWP | Fever Dream', price: 24.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V7R-OfObAXeR1eZJvOhuRz39kE1w4jiAzNiod3qTOgcgXpAlQ-ML5hjqxtHjZOrrtlHWit9EyCj9iDQJsHhCZP-wUg' },
+            { id: 'r-awp-atheris', name: 'AWP | Atheris', price: 5.50, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V7JkMPWBMWuZxuZi_rZsS3zgzU8isW3dnIr6eHKfPVAhDpojEe9YsUW4xta1Nuzm5FDci4NbjXKpmWVQppo' },
+            { id: 'r-awp-corticera', name: 'AWP | Corticera', price: 30.00, rarity: 'Restricted', rarityColor: '#8847ff', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk6fO4bahsH_GEHlicyOl-pK8xTSzqwU1-5jjWno6hJHyeOg91A5R2TOEOtRS-kIG2ZeO25lDYg90U02yg2USK57Qn' },
+            { id: 'r-awp-dragon', name: 'AWP | Dragon Lore', price: 2500.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk4veqYaF7IfysCnWRxuF4j-B-Xxa_nBovp3Pdwtj9cC_GaAd0DZdwQu9fuhS4kNy0NePntVTbjYpCyyT_3CgY5i9j_a9cBkcCWUKV' },
+            { id: 'r-awp-medusa', name: 'AWP | Medusa', price: 550.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk4veqfbdsH_GEHlicyOl-pK85TC23wk12tWSGnNr6JXqRPVUnA5J5RLIKshS-l4HuYbji7lfajdgU02yg2bOcOBD3' },
+            { id: 'r-awp-wildfire', name: 'AWP | Wildfire', price: 145.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V7NkLPSVB3WV_uJ_t-l9AX7rxhl-tmzSwomtdC6TPwQnW5UkR-YD5kK-ltCzP-Ox4FfXiNoQyyrgznQeu9L0PzQ' },
+            { id: 'r-awp-containment', name: 'AWP | Containment Breach', price: 90.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V7JkMuWAMWuZxuZi_rQ6SXq1xURysj_Vw4uhJHOVPQ8oCZt4QrRbtRi6ldPlPu_g4FHaiYNbjXKpcPI_17A' },
+
+            { id: 'k-bayonet-fade', name: '★ Bayonet | Fade', price: 900.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLzn4_v8ydP0POvV6JsJPWsAm6Xyfo45-BrHniwzUh24jjVm4qgInnCOA4mDscmEeVcsBXtkN22P-yx5waNg5UFk3tAoG85FQ' },
+            { id: 'k-bayonet-doppler', name: '★ Bayonet | Doppler', price: 650.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLzn4_v8ydP0POjV6BiMOCfC3Wv0eZ3o-Q4cCW6khUz_TvWmIygcnnGaVIlC5N5QOINt0S8lYDkMOu2sgTWgoxExCmqi3hN7i11o7FV2n5aQD4' },
+            { id: 'k-bayonet-tiger', name: '★ Bayonet | Tiger Tooth', price: 780.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLzn4_v8ydP0POgV7BkJ_WBMWiCwOBxtd5lRi67gVMhsGrTntn4ci-ROAYlXMBwE7YL5BaxxIHjY-vq7w3X398RxS78iylK8G81tBow9RWL' },
+            { id: 'k-bayonet-lore', name: '★ Bayonet | Lore', price: 850.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLzn4_v8ydP0PG7V6ZsOf-dC3OvzeFktd5lRi67gVMj5GnXzt__JH-SawdyDJF1ROcCu0K5xNOxZeqx5AOI2oNGnnn23ylJ8G81tNZRAs3w' },
+            { id: 'k-karambit-fade', name: '★ Karambit | Fade', price: 1600.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Q7uCvZaZkNM-SD1iWwOpzj-1gSCGn20tztm_UyIn_JHKUbgYlWMcmQ-ZcskSwldS0MOnntAfd3YlMzH35jntXrnE8SOGRGG8' },
+            { id: 'k-karambit-doppler', name: '★ Karambit | Doppler', price: 1200.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Q7uCvZaZkNM-SA1iSze91u_FsTju_qhAmoT-Jn4bjJC_4Ml93UtZuRLQPsBawkNfiMbnl5AKMiopCnin7iCJBv31j4rkBBKEg-6zUjV3GY6p9v8dpLWT3Fg' },
+            { id: 'k-karambit-tiger', name: '★ Karambit | Tiger Tooth', price: 1500.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Q7uCvZaZkNM-SAFiEyOlzot5mXSi9khgYvzSCkpu3eC3BbwUmCcMlQbMD4xG_w9zkPu7gsQXe2YJFzHqqjixL5ylr4ukAWb1lpPNV9oeSnQ' },
+            { id: 'k-butterfly-fade', name: '★ Butterfly Knife | Fade', price: 2200.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Z-ua6bbZrLOmsD2avx-9ytd5lRi67gVNwsDvSwtqqc3iXZg4kCZYjReYLtRbum9XgYuvm5wbWjtgUzCn3iSsf8G81tFEeH9rw' },
+            { id: 'k-butterfly-doppler', name: '★ Butterfly Knife | Doppler', price: 1900.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Z-ua6bbZrLOmsD2qvw-J3s-p5SiihmSIqsi-HlorwOy7DAVRPVssnHaMUuhe9xIHlMuvqtgPf2IoTyC383Sod7CY-sr4DVfZ2qKPU3g-TNuE-545DeqjFvb87vg' },
+            { id: 'k-flip-fade', name: '★ Flip Knife | Fade', price: 750.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1d4_u-V6VsH_aSCmKvzedxuPUnTXywzR9-427Qyd34d3iUb1RyDJMlQbQL5xTtw920Zby05FeNjohDzDK-0H3GjMwqlg' },
+            { id: 'k-flip-doppler', name: '★ Flip Knife | Doppler', price: 620.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1d4_u-V6VgH_KfD2Sb0et3ou1WQiihlxEiuieAnrD1KCzPKhh0CpN4FuICtEK4xoKxNbjq4gaM3dhCzSn-2i5I7346sesBVqF3_a3SkUifZq_j0qfR' },
+            { id: 'k-m9-fade', name: '★ M9 Bayonet | Fade', price: 1400.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Wts2sab1iLvWHMWaR_uh3tORWQyC0nQlp4znQytr6cnjFbg8oC8BzRrQK50S-lNDgP-_r5wWP3t5CyX37jCIb7DErvbiJu9Hv_g' },
+            { id: 'k-m9-doppler', name: '★ M9 Bayonet | Doppler', price: 1150.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Wts2sab1iLvWHMWad_up5oPFlSjuMhRUmoDjUpYPwJiPTcA8nCcZ1EOcDu0Lum9CzZO6w4Fbeg4wQxX392ykb6yc4troKAPIm-6fJz1aWPFsIQnE' },
+            { id: 'k-talon-fade', name: '★ Talon Knife | Fade', price: 1900.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1M5vahf6lsK_WBMWaR_uh3tORWQyC0nQlpsmXcnNaoeHuTZwUiWMZzRrVZsxm9x9ThNrzj4QCPjdhNmHj73S9KujErvbhX2ACGeQ' },
+            { id: 'k-talon-doppler', name: '★ Talon Knife | Doppler', price: 1500.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1M5vahf6lsK_WBMWad_ux6seJiXyyyhxEYvjyXmIP8KDHCOml8U8UoAfkC4UbuldyzNOy35lHc3opEyS2qhiocvHs_5bsHVPIgq_bQhgrBM7w9_9Bdc1T7Obpq' },
+            { id: 'k-skeleton-fade', name: '★ Skeleton Knife | Fade', price: 1700.00, rarity: 'Covert', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1I5PeibbBiLs-SD1iWwOpzj-1gSCGn20kjt2-En9mpcCmQag8hXsciQeJYthW9kILkMLji4g3Ygo8Uznj6jX9XrnE8raC5r1M' },
+
+            { id: 'gl-pandora', name: "★ Sport Gloves | Pandora's Box", price: 1300.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Tk5UvzWCL2kpn2-DFk_OKherB0H-CGHHecxNF6ueZhW2exk01w4j7cmYn4eHPCbAMhApdwTOIN5BPsx9yyYu605FTeid0Uy3j3kGoXueKyz5wo' },
+            { id: 'gl-vice', name: '★ Sport Gloves | Vice', price: 2000.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Tk5UvzWCL2kpn2-DFk_OKherB0H_KfG2Kv0ed4u95lRi67gVNx4T-Bw434IHyVb1QlAsd1FOUDthG4xNznMu3m4QXXg90Wzn_33C1I8G81tLaDi_rK' },
+            { id: 'gl-superconductor', name: '★ Sport Gloves | Superconductor', price: 1200.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Tk5UvzWCL2kpn2-DFk_OKherB0H_yaCW-E_ux6peRWQyC0nQlp4jjRyt-vJX6QblMgApt0R-5c5hLsktO2Nu_h4QaLg4MXyCmr2ClP7jErvbiwB_ADaw' },
+            { id: 'gl-omega', name: '★ Sport Gloves | Omega', price: 1500.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Tk5UvzWCL2kpn2-DFk_OKherB0H_KfD2Sb_vlzsuNgQS6MjBgrvzKSpYPwJiPTcFAkC5UiRrRZ5BO9ktDnM-q37wCMjN5GxCqvhngb6Chj6u0CVvAj-6fJz1aW3nluLgw' },
+            { id: 'gl-crimson-kimono', name: '★ Specialist Gloves | Crimson Kimono', price: 2600.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Tk71ruQBH4jYLf-i5U-fe9V7d9JfOaD2uZ0vpJu-hkQCe8qhkusjCKlIvqHjnCOml8U8UoAfkItBLswdbuNbjr5FHdjNkUzSv73C1K5y46tu4EUvAg-6bU3FrBMOE4_9BdcyhkRns5' },
+            { id: 'gl-emerald-web', name: '★ Specialist Gloves | Emerald Web', price: 2200.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Tk71ruQBH4jYLf-i5U-fe9V7d9JfOaD2uZ0vpJtexsXSi_kSIwtj-6lob-KT-Jbw4kA8d4QOBb5hnqmoHuMLmx4AWK341Bnyr93CxN6itjsb1XUfAgqLqX0V92--w69A' },
+            { id: 'gl-turtle', name: '★ Moto Gloves | Turtle', price: 900.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu4r7_lb1QgTykpPf-i5U-fe9V6liNP-BDX6TzetJsuB6RiqMkg8itjO6lZ34LyzCAVp5Xco0W7VftBjqxILkZbvi4FfYitpEynj6jSgc5i4_tegLV_F0q6SFhwDJMuUjoc5UdYAe6j0' },
+            { id: 'gl-spearmint', name: '★ Moto Gloves | Spearmint', price: 1700.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu4r7_lb1QgTykpPf-i5U-fe9V6liNP-BDX6TzetJvehnWxanhxQmvTqJn7D1KCzPKhgnW5UmRO4DsxXrlYbhPurmtAXai98UzS73in5I6S5p4OsAU_Zx-KHWkUifZsxBQgc2' },
+            { id: 'gl-black-tie', name: '★ Driver Gloves | Black Tie', price: 550.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5T441rsfhr9kYDl7h1I4_utY5t-NPmHDW-VxdF0vOBqRBaknRQztgKJk4jxNWXBbwdxDcZwFrFY40XrktLgNr7q4AKM2owQmX6ojSpMuCo_tulQB6ss5OSJ2E_SKQx-' },
+            { id: 'gl-king-snake', name: '★ Driver Gloves | King Snake', price: 1800.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5T441rsfhr9kYDl7h1I4_utY5t-LvGYC3SbyOBJp-lgWyyMmRQguynLz4r6Iy7EbFchApNyR-dbtEbuw4XkN7jq7gHdjtoQzi37hiwYvytvt_FCD_Ql24JgJg' },
+            { id: 'gl-crimson-weave', name: '★ Driver Gloves | Crimson Weave', price: 700.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5T441rsfhr9kYDl7h1I4_utY5t_JfSsAm6Xyfo4trVoSnGxlh9x5DmEzt6rJS2RagYiA5siQ-MLthW9xtDlM7uxtFCNgpUFk3thcTnRAg' },
+            { id: 'gl-snow-leopard', name: '★ Driver Gloves | Snow Leopard', price: 1000.00, rarity: 'Extraordinary', rarityColor: '#eb4b4b', image: 'https://community.akamai.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5T441rsfhr9kYDl7h1I4_utY5tnIfeGD3Wv1uZ_pORWQyC0nQlp4TnUw9f6J3PCOw4oW8ZxRuEOshK8l9fgZbnqswHX3owXmSisjCIfuzErvbiEoDwfJQ' }
+        ];
+        
+
+        // ==================== ФОРМАТ ЦЕНЫ ====================
+        function formatPrice(usd) {
+            const rate = state.rates[state.currency] || 1;
+            const v = usd * rate;
+            if (state.currency === 'USD') return '$' + v.toFixed(2);
+            if (state.currency === 'UAH') return Math.round(v).toLocaleString('ru-RU') + ' ₴';
+            if (state.currency === 'RUB') return Math.round(v).toLocaleString('ru-RU') + ' ₽';
+            return '$' + v.toFixed(2);
+        }
+
+        function setCurrency(cur) {
+            state.currency = cur;
+            document.querySelectorAll('.cur-btn').forEach(b => b.classList.toggle('active', b.dataset.cur === cur));
+            renderBalance();
+            renderInventory();
+            renderShop();
+            renderCaseTabs();
+            renderCaseTrack();
+            calculateChance();
+            renderHistory();
+            updateCaseTimer();
+        }
+
+        // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+        const STARTER_SKIN = SHOP_ITEMS.find(item => item.id === 'c-glock-ground') || SHOP_ITEMS[0];
+        state.inventory = STARTER_SKIN ? [{ ...STARTER_SKIN, id: `inv_${STARTER_SKIN.id}` }] : [];
+
+        function getActiveCase() {
+            return CASES.find(c => c.id === state.activeCaseId) || CASES[0];
+        }
+
+        function renderBalance() {
+            document.getElementById('userBalance').innerText = formatPrice(state.balance);
+        }
+
+        function renderInventory() {
+            const container = document.getElementById('inventorySection');
+            container.innerHTML = '';
+            if (state.inventory.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">Инвентарь пуст. Купите скин в магазине или откройте кейс!</div>';
+                return;
+            }
+            const selectedIds = new Set(state.selectedInventoryItems.map(i => i.id));
+            state.inventory.forEach(item => {
+                const card = document.createElement('div');
+                card.className = `item-card ${selectedIds.has(item.id) ? 'selected' : ''}`;
+                card.style.setProperty('--rarity-color', item.rarityColor);
+                card.innerHTML = `
+                    <img src="${item.image}" class="item-img" alt="${item.name}" onerror="this.src='${SVG_WEAPON_FALLBACK}'">
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-price">${formatPrice(item.price)}</div>
+                    <button class="sell-btn" onclick="sellItem(event, '${item.id}')">Продать</button>
+                `;
+                card.addEventListener('click', (e) => { if (!e.target.classList.contains('sell-btn')) selectInventoryItem(item); });
+                container.appendChild(card);
+            });
+        }
+
+        const CATEGORY_LABELS = {
+            all: 'Все предметы', knives: 'Ножи', rifles: 'Винтовки', pistols: 'Пистолеты',
+            smgs: 'ПП', shotguns: 'Дробовики', gloves: 'Перчатки'
+        };
+
+        function itemCategory(item) {
+            if (item.category) return item.category;
+            const n = item.name.toLowerCase();
+            if (n.includes('glove') || n.includes('wraps')) return 'gloves';
+            if (n.startsWith('★')) return 'knives';
+            if (/ak-47|m4a|m4a1|awp|ssg|scar|aug|famas|galil|sg 553|g3sg1|scar-20|ssg 08/.test(n)) return 'rifles';
+            if (/deagle|glock|usp|p250|five-seven|five seven|tec-9|cz75|r8 revolver|p2000|dual berettas|berettas/.test(n)) return 'pistols';
+            if (/mac-10|mp9|mp7|mp5|ump-45|p90|pp-bizon|bizon|mp5-sd/.test(n)) return 'smgs';
+            if (/nova|xm1014|mag-7|sawed-off/.test(n)) return 'shotguns';
+            return 'rifles';
+        }
+
+        function setShopCategory(category) {
+            if (state.isSpinning) return;
+            state.shopCategory = category;
+            document.querySelectorAll('.category-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.category === category));
+            renderShop();
+        }
+
+        function renderCategoryCounts() {
+            const counts = { all: SHOP_ITEMS.length, knives: 0, rifles: 0, pistols: 0, smgs: 0, shotguns: 0, gloves: 0 };
+            SHOP_ITEMS.forEach(item => { counts[itemCategory(item)] = (counts[itemCategory(item)] || 0) + 1; });
+            Object.entries(counts).forEach(([key, value]) => {
+                const el = document.getElementById('count-' + key);
+                if (el) el.textContent = value;
+            });
+        }
+
+        function renderShop() {
+            const container = document.getElementById('shopGrid');
+            const title = document.getElementById('categoryTitle');
+            const catalogCount = document.getElementById('catalogCount');
+            container.innerHTML = '';
+            const filtered = state.shopCategory === 'all'
+                ? SHOP_ITEMS
+                : SHOP_ITEMS.filter(item => itemCategory(item) === state.shopCategory);
+            title.textContent = CATEGORY_LABELS[state.shopCategory];
+            catalogCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'предмет' : filtered.length < 5 ? 'предмета' : 'предметов'}`;
+            filtered.forEach(item => {
+                const canAfford = state.balance >= item.price;
+                const card = document.createElement('div');
+                card.className = `item-card ${state.selectedTargetItem?.id === item.id ? 'selected-target' : ''}`;
+                card.style.setProperty('--rarity-color', item.rarityColor);
+                card.innerHTML = `
+                    <img src="${item.image}" class="item-img" alt="${item.name}" onerror="this.src='${SVG_WEAPON_FALLBACK}'">
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-price">${formatPrice(item.price)}</div>
+                    <button class="buy-btn" ${canAfford ? '' : 'disabled'} onclick="buyItem(event, '${item.id}')">${canAfford ? 'Купить' : 'Мало $'}</button>
+                `;
+                card.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('buy-btn')) selectTargetItem(item);
+                });
+                container.appendChild(card);
+            });
+            renderCategoryCounts();
+        }
+
+        function selectInventoryItem(item) {
+            if (state.isSpinning) return;
+            const idx = state.selectedInventoryItems.findIndex(i => i.id === item.id);
+            if (idx !== -1) {
+                state.selectedInventoryItems.splice(idx, 1);
+            } else {
+                state.selectedInventoryItems.push(item);
+            }
+            renderInventory();
+            calculateChance();
+        }
+
+        function selectTargetItem(item) {
+            if (state.isSpinning) return;
+            state.selectedTargetItem = item;
+            renderShop();
+            calculateChance();
+        }
+
+        function sellItem(event, itemId) {
+            event.stopPropagation();
+            if (state.isSpinning) return;
+            const idx = state.inventory.findIndex(i => i.id === itemId);
+            if (idx !== -1) {
+                const item = state.inventory[idx];
+                state.balance += item.price;
+                state.selectedInventoryItems = state.selectedInventoryItems.filter(i => i.id !== itemId);
+                state.inventory.splice(idx, 1);
+                renderBalance();
+                renderInventory();
+                renderShop();
+                calculateChance();
+                showToast(`Продано ${item.name} за +${formatPrice(item.price)}`, 'win');
+            }
+        }
+
+        function buyItem(event, itemId) {
+            event.stopPropagation();
+            if (state.isSpinning) return;
+            const item = SHOP_ITEMS.find(i => i.id === itemId);
+            if (!item) return;
+            if (state.balance < item.price) {
+                showToast('Недостаточно средств!', 'lose');
+                return;
+            }
+            state.balance -= item.price;
+            state.inventory.unshift({ ...item, id: 'buy_' + Date.now() + '_' + Math.floor(Math.random() * 1000) });
+            renderBalance();
+            renderInventory();
+            renderShop();
+            calculateChance();
+            showToast(`Куплено: ${item.name} за ${formatPrice(item.price)}`, 'win');
+        }
+
+        // ==================== РАСЧЁТ ШАНСА ====================
+        function getBetValue() {
+            return state.selectedInventoryItems.reduce((sum, it) => sum + it.price, 0);
+        }
+
+        function calculateChance() {
+            const betVal = getBetValue();
+            const targetVal = state.selectedTargetItem ? state.selectedTargetItem.price : 0;
+            document.getElementById('betValueDisplay').innerText = formatPrice(betVal);
+            document.getElementById('targetValueDisplay').innerText = formatPrice(targetVal);
+
+            const n = state.selectedInventoryItems.length;
+            const betPreviewEl = document.getElementById('previewBetText');
+            if (n === 0) {
+                betPreviewEl.innerText = 'Не выбрано';
+            } else if (n === 1) {
+                betPreviewEl.innerText = state.selectedInventoryItems[0].name;
+            } else {
+                betPreviewEl.innerText = `${state.selectedInventoryItems[0].name} +${n - 1}`;
+            }
+
+            document.getElementById('previewTargetText').innerText = state.selectedTargetItem ? state.selectedTargetItem.name : 'Не выбрано';
+
+            const upgradeBtn = document.getElementById('upgradeBtn');
+            if (betVal <= 0 || targetVal <= 0) {
+                updateWheelUI(0, 0);
+                upgradeBtn.disabled = true;
+                return;
+            }
+            let chance = (betVal / targetVal) * 85;
+            let multiplier = targetVal / betVal;
+            if (chance > 95) chance = 95;
+            updateWheelUI(chance, multiplier);
+            upgradeBtn.disabled = false;
+        }
+
+        function updateWheelUI(chance, multiplier) {
+            document.getElementById('chanceDisplay').innerText = `${chance.toFixed(2)}%`;
+            document.getElementById('multiplierDisplay').innerText = `x${multiplier.toFixed(2)}`;
+            const circumference = 753.98;
+            const offset = circumference - (chance / 100) * circumference;
+            document.getElementById('wheelProgress').style.strokeDashoffset = offset;
+        }
+
+        // ==================== АПГРЕЙД ====================
+                function startUpgrade() {
+            if (state.isSpinning) return;
+            if (state.selectedInventoryItems.length === 0 || !state.selectedTargetItem) return;
+
+            const betVal = getBetValue();
+            const targetVal = state.selectedTargetItem.price;
+
+            const usedItems = [...state.selectedInventoryItems];
+            const targetItem = state.selectedTargetItem;
+
+            let chance = (betVal / targetVal) * 85;
+            if (chance > 95) chance = 95;
+            const multiplier = targetVal / betVal;
+
+            state.isSpinning = true;
+            document.getElementById('upgradeBtn').disabled = true;
+
+            const usedIds = new Set(usedItems.map(i => i.id));
+            state.inventory = state.inventory.filter(i => !usedIds.has(i.id));
+            state.selectedInventoryItems = [];
+            renderInventory();
+
+            updateWheelUI(chance, multiplier);
+
+            // === ЗВУК ПРОКРУТКИ ===
+            playSound('soundUpgradeSpin', { loop: true });
+
+            const isWin = Math.random() * 100 <= chance;
+            const winningSectorDegrees = (chance / 100) * 360;
+            let landingDegree = isWin
+                ? Math.random() * (winningSectorDegrees - 2) + 1
+                : winningSectorDegrees + Math.random() * (360 - winningSectorDegrees - 2) + 1;
+
+            const totalRotation = state.currentRotation + 1800 + (360 - (state.currentRotation % 360)) + landingDegree;
+            state.currentRotation = totalRotation;
+            document.getElementById('needleContainer').style.transform = `rotate(${totalRotation}deg)`;
+
+            setTimeout(() => {
+                // === СТОП ЗВУКА ПРОКРУТКИ ===
+                stopSound('soundUpgradeSpin');
+
+                handleResult(isWin, targetItem, chance);
+
+                state.selectedTargetItem = null;
+                renderShop();
+
+                state.isSpinning = false;
+                calculateChance();
+            }, 3500);
+        }
+                function handleResult(isWin, targetItem, chance) {
+            if (isWin) {
+                const newSkin = { ...targetItem, id: 'win_' + Date.now() };
+                state.inventory.unshift(newSkin);
+                renderInventory();
+                playSound('soundWin');
+                showToast(`УСПЕХ! Вы получили ${targetItem.name}!`, 'win');
+            } else {
+                playSound('soundLose');
+                showToast(`НЕУДАЧА! Апгрейд сорвался.`, 'lose');
+            }
+            addHistoryRecord(isWin, targetItem, chance);
+        }
+
+        // ==================== ИСТОРИЯ ====================
+        const _history = [];
+
+        function addHistoryRecord(isWin, item, chance) {
+            _history.unshift({ isWin, item, chance });
+            if (_history.length > 5) _history.pop();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const feed = document.getElementById('historyFeed');
+            feed.innerHTML = '';
+            _history.forEach(rec => {
+                const card = document.createElement('div');
+                card.className = `history-card ${rec.isWin ? 'win' : 'lose'}`;
+                card.innerHTML = `
+                    <div class="history-status ${rec.isWin ? 'win' : 'lose'}">
+                        <span>${rec.isWin ? 'УСПЕШНО' : 'ПРОИГРЫШ'}</span>
+                        <span>${rec.chance.toFixed(1)}%</span>
+                    </div>
+                    <div class="history-item-name">${rec.item.name}</div>
+                    <div class="history-details">${formatPrice(rec.item.price)}</div>
+                `;
+                feed.appendChild(card);
+            });
+        }
+
+        function showToast(message, type = 'win') {
+            const toast = document.getElementById('toast');
+            toast.className = `toast ${type} show`;
+            toast.innerText = message;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+                // ==================== ЗВУКИ ====================
+        function playSound(id, opts = {}) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            try {
+                el.currentTime = 0;
+                el.loop = !!opts.loop;
+                el.volume = 0.75;
+                el.play().catch(() => { /* браузер может блокировать до первого клика */ });
+            } catch (e) { /* ignore */ }
+        }
+
+        function stopSound(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            try {
+                el.pause();
+                el.currentTime = 0;
+            } catch (e) { /* ignore */ }
+        }
+
+        // ==================== КЕЙСЫ ====================
+        let caseTimerInterval = null;
+
+        function getCasePool(c) {
+            return SHOP_ITEMS.filter(it => it.price >= c.min && it.price <= c.max);
+        }
+
+        function getCaseWeight(item, tier) {
+            const price = item.price || 0;
+            if (tier === 'common') {
+                if (price <= 0.5) return 55;
+                if (price <= 2) return 25;
+                if (price <= 5) return 8;
+                return 0.5;
+            }
+            if (tier === 'rare') {
+                if (price <= 10) return 50;
+                if (price <= 30) return 25;
+                if (price <= 50) return 8;
+                return 0.5;
+            }
+            if (tier === 'epic') {
+                if (price <= 100) return 50;
+                if (price <= 200) return 25;
+                if (price <= 300) return 8;
+                return 0.5;
+            }
+            if (price <= 500) return 40;
+            if (price <= 1000) return 25;
+            if (price <= 2000) return 8;
+            return 1;
+        }
+
+        function pickWeightedCaseItem(pool, tier) {
+            const totalWeight = pool.reduce((sum, item) => sum + getCaseWeight(item, tier), 0);
+            let roll = Math.random() * totalWeight;
+            for (const item of pool) {
+                roll -= getCaseWeight(item, tier);
+                if (roll <= 0) return item;
+            }
+            return pool[pool.length - 1];
+        }
+
+        function renderCaseTabs() {
+            const el = document.getElementById('caseTabs');
+            if (!el) return;
+            el.innerHTML = CASES.map(c => {
+                const isFree = c.price <= FREE_CASE_LIMIT;
+                return `
+                <button class="case-tab ${state.activeCaseId === c.id ? 'active' : ''}" onclick="setActiveCase('${c.id}')">
+                    <span class="case-tab-name">${c.title}${isFree ? ' · FREE' : ''}</span>
+                    <span class="case-tab-price">${formatPrice(c.price)}</span>
+                    <span class="case-tab-sub">${c.subtitle}</span>
+                </button>`;
+            }).join('');
+        }
+
+        function setActiveCase(id) {
+            if (state.caseOpening) return;
+            state.activeCaseId = id;
+            const c = getActiveCase();
+            document.getElementById('caseTitle').textContent = c.title;
+            document.getElementById('caseSubtitle').textContent = c.subtitle;
+            renderCaseTabs();
+            renderCaseTrack();
+            updateCaseTimer();
+        }
+
+        function renderCaseTrack() {
+            const track = document.getElementById('caseTrack');
+            const c = getActiveCase();
+            const pool = getCasePool(c);
+            if (!track) return;
+            if (!pool.length) {
+                track.innerHTML = '<div style="padding: 20px; color: #b7c0cc;">Нет предметов в этом кейсе</div>';
+                return;
+            }
+            const items = [];
+            for (let i = 0; i < 48; i++) {
+                items.push(pool[i % pool.length]);
+            }
+            track.innerHTML = items.map(item => `
+                <div class="case-card">
+                    <img src="${item.image}" alt="${item.name}" loading="lazy" onerror="this.src='${SVG_WEAPON_FALLBACK}'">
+                    <span>${item.name}</span>
+                    <b>${formatPrice(item.price)}</b>
+                </div>
+            `).join('');
+            track.style.transition = 'none';
+            track.style.transform = 'translate3d(0, 0, 0)';
+        }
+
+        function updateCaseTimer() {
+            const c = getActiveCase();
+            const timer = document.getElementById('caseTimer');
+            const button = document.getElementById('caseOpenBtn');
+            const status = document.getElementById('caseStatus');
+            if (!timer || !button || !status) return;
+
+            const isFree = c.price <= FREE_CASE_LIMIT;
+            const freeAvailable = isFree && Date.now() >= state.caseReadyAt[c.id];
+
+            if (freeAvailable) {
+                timer.textContent = 'Бесплатное открытие доступно';
+                status.textContent = 'FREE';
+                button.textContent = 'Открыть бесплатно';
+                button.disabled = state.caseOpening;
+            } else if (isFree) {
+                const left = Math.max(0, state.caseReadyAt[c.id] - Date.now());
+                const sec = Math.ceil(left / 1000);
+                timer.textContent = `Бесплатно через ${sec} сек`;
+                status.textContent = formatPrice(c.price);
+                button.textContent = 'Открыть за ' + formatPrice(c.price);
+                button.disabled = state.caseOpening;
+            } else {
+                timer.textContent = 'Только платное открытие';
+                status.textContent = formatPrice(c.price);
+                button.textContent = 'Открыть за ' + formatPrice(c.price);
+                button.disabled = state.caseOpening;
+            }
+        }
+
+                function openCase() {
+            if (state.caseOpening) return;
+            const c = getActiveCase();
+
+            const isFree = c.price <= FREE_CASE_LIMIT;
+            const free = isFree && Date.now() >= state.caseReadyAt[c.id];
+
+            if (!free && state.balance < c.price) {
+                showToast('Недостаточно средств для кейса!', 'lose');
+                return;
+            }
+
+            const pool = getCasePool(c);
+            if (!pool.length) return;
+
+            const track = document.getElementById('caseTrack');
+            const cards = [...track.children];
+            if (!cards.length) return;
+
+            const winner = pickWeightedCaseItem(pool, c.tier);
+
+            if (!free) {
+                state.balance -= c.price;
+                renderBalance();
+            }
+
+            state.caseOpening = true;
+            updateCaseTimer();
+
+            // === ЗВУК ОТКРЫТИЯ КЕЙСА ===
+            playSound('soundCaseSpin');
+
+            const winnerIndex = Math.min(38, cards.length - 1);
+            const winnerCard = cards[winnerIndex];
+            winnerCard.innerHTML = `
+                <img src="${winner.image}" alt="${winner.name}" onerror="this.src='${SVG_WEAPON_FALLBACK}'">
+                <span>${winner.name}</span>
+                <b>${formatPrice(winner.price)}</b>`;
+
+            track.style.transition = 'none';
+            track.style.transform = 'translate3d(0, 0, 0)';
+            void track.offsetWidth;
+
+            const windowEl = document.querySelector('.case-window');
+            const center = windowEl.clientWidth / 2;
+            const cardCenter = winnerCard.offsetLeft + winnerCard.offsetWidth / 2;
+            const targetX = center - cardCenter;
+
+            track.style.transition = 'transform 6.2s cubic-bezier(.08,.72,.12,1)';
+            requestAnimationFrame(() => {
+                track.style.transform = `translate3d(${targetX}px, 0, 0)`;
+            });
+
+            let finished = false;
+            const finishOpening = () => {
+                if (finished) return;
+                finished = true;
+                track.removeEventListener('transitionend', finishOpening);
+                track.style.transition = 'none';
+
+                state.inventory.unshift({ ...winner, id: 'case_' + Date.now() });
+                if (isFree) {
+                    state.caseReadyAt[c.id] = Date.now() + 60000;
+                }
+                state.caseOpening = false;
+
+                renderInventory();
+                calculateChance();
+                showToast(`Кейс: ${winner.name}!`, 'win');
+                renderCaseTrack();
+                updateCaseTimer();
+            };
+
+            track.addEventListener('transitionend', finishOpening);
+            setTimeout(finishOpening, 7000);
+        }
+        // ==================== ЗАПУСК ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderBalance();
+            renderInventory();
+            renderShop();
+            renderCaseTabs();
+            renderCaseTrack();
+            updateCaseTimer();
+            caseTimerInterval = setInterval(updateCaseTimer, 250);
+            calculateChance();
+
+            document.getElementById('refillBtn').addEventListener('click', () => {
+                state.balance += 10;
+                renderBalance();
+                renderShop();
+                calculateChance();
+                showToast('+$10 зачислено!', 'win');
+            });
+        });
+    </script>
+</body>
+</html>
